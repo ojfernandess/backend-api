@@ -42,9 +42,6 @@ app.post("/api/profit", (req, res) => {
     data.users[userId][planId] = { profit, startTime };
 
     saveData(data);
-    console.log(`Dados recebidos e salvos para o usuário ${userId}, plano ${planId}:`);
-    console.log({ profit, startTime });
-    
     res.status(200).json({ message: "Dados salvos com sucesso." });
 });
 
@@ -53,15 +50,16 @@ app.get("/api/profit/:userId", (req, res) => {
     const { userId } = req.params;
     const data = loadData();
 
-    console.log("Tentando acessar o usuário com ID:", userId);
-
-    // Verifica se o usuário existe
     if (!data.users[userId]) {
-        console.error("Usuário não encontrado:", userId);
         return res.status(404).json({ message: "Usuário não encontrado." });
     }
 
     res.status(200).json(data.users[userId]);
+});
+
+// Rota padrão para verificar o status da API
+app.get("/", (req, res) => {
+    res.send("API está funcionando corretamente!");
 });
 
 // Inicia o servidor
