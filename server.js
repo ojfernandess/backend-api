@@ -1,54 +1,63 @@
 const express = require("express");
+const bodyParser = require("body-parser");
 const fs = require("fs");
-const path = require("path");
+
 const app = express();
+const PORT = 3000;
 
-app.use(express.json());
+// Middleware para processar JSON
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Caminho para o arquivo JSON onde os dados serão armazenados
-const dataFilePath = path.join(__dirname, "data.json");
+// Simulação de banco de dados com arquivo JSON
+const DATABASE = "data.json";
 
-// Função para ler os dados de data.json
-const readData = () => {
-    if (fs.existsSync(dataFilePath)) {
-        const data = fs.readFileSync(dataFilePath, "utf8");
-        return JSON.parse(data);
+// Função para carregar os dados
+function loadData() {
+    if (!fs.existsSync(DATABASE)) {
+        fs.writeFileSync(DATABASE, JSON.stringify({ users: {} }, null, 2));
     }
-    return { users: {} };
-};
+    return JSON.parse(fs.readFileSync(DATABASE));
+}
 
-// Função para salvar os dados no arquivo data.json
-const saveData = (data) => {
-    fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2), "utf8");
-};
+// Função para salvar os dados
+function saveData(data) {
+    fs.writeFileSync(DATABASE, JSON.stringify(data, null, 2));
+}
 
-// Endpoint para receber os dados do ganho
+// Rota para salvar ou atualizar lucros
 app.post("/api/profit", (req, res) => {
     const { userId, planId, profit, startTime } = req.body;
 
-    // Carregar os dados atuais
-    let data = readData();
+    if (!userId || !planId || profit == null || !startTime) {
+        return res.status(400).json({ message: "Dados incompletos." });
+    }
 
-    // Verificar se o usuário existe, caso contrário, criar o usuário
+    const data = loadData();
+
+    // Atualiza os dados do usuário
     if (!data.users[userId]) {
         data.users[userId] = {};
     }
+    data.users[userId][planId] = { profit, startTime };
 
-    // Adicionar ou atualizar os ganhos do plano
-    data.users[userId][planId] = {
-        profit: profit,
-        startTime: startTime
-    };
-
-    // Salvar os dados atualizados
     saveData(data);
-
-    // Responder com os dados salvos
-    res.json({ message: "Dados salvos com sucesso!", data });
+    res.status(200).json({ message: "Dados salvos com sucesso." });
 });
 
-// Iniciar o servidor
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Servidor rodando na porta ${port}`);
+// Rota para recuperar lucros
+app.get("/api/profit/:userId", (req, res) => {
+    const { userId } = req.params;
+    const data = loadData();
+
+    if (!data.users[userId]) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
+    res.status(200).json(data.users[userId]);
+});
+
+// Inicia o servidor
+app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
