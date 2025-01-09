@@ -1,63 +1,55 @@
 const express = require("express");
-const bodyParser = require("body-parser");
 const fs = require("fs");
-
 const app = express();
-const PORT = 3000;
+const port = process.env.PORT || 3000;
 
-// Middleware para processar JSON
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Middleware para interpretar o corpo das requisições como JSON
+app.use(express.json());
 
-// Simulação de banco de dados com arquivo JSON
-const DATABASE = "data.json";
+// Rota principal para verificar se o servidor está funcionando
+app.get("/", (req, res) => {
+    res.send("API está funcionando corretamente!");
+});
 
-// Função para carregar os dados
-function loadData() {
-    if (!fs.existsSync(DATABASE)) {
-        fs.writeFileSync(DATABASE, JSON.stringify({ users: {} }, null, 2));
-    }
-    return JSON.parse(fs.readFileSync(DATABASE));
-}
-
-// Função para salvar os dados
-function saveData(data) {
-    fs.writeFileSync(DATABASE, JSON.stringify(data, null, 2));
-}
-
-// Rota para salvar ou atualizar lucros
+// Endpoint para salvar os ganhos do usuário
 app.post("/api/profit", (req, res) => {
+    // Verifica se os dados estão sendo recebidos
+    console.log("Dados recebidos no backend:", req.body);
+
     const { userId, planId, profit, startTime } = req.body;
 
-    if (!userId || !planId || profit == null || !startTime) {
-        return res.status(400).json({ message: "Dados incompletos." });
-    }
+    // Lê os dados atuais do arquivo data.json
+    fs.readFile("./data.json", "utf8", (err, data) => {
+        if (err) {
+            console.error("Erro ao ler o arquivo:", err);
+            return res.status(500).json({ message: "Erro ao ler o arquivo." });
+        }
 
-    const data = loadData();
+        let usersData = JSON.parse(data);
 
-    // Atualiza os dados do usuário
-    if (!data.users[userId]) {
-        data.users[userId] = {};
-    }
-    data.users[userId][planId] = { profit, startTime };
+        // Verifica se o usuário existe e cria o usuário caso não exista
+        if (!usersData.users[userId]) {
+            usersData.users[userId] = {};
+        }
 
-    saveData(data);
-    res.status(200).json({ message: "Dados salvos com sucesso." });
+        // Atualiza ou cria os dados de lucro do plano
+        usersData.users[userId][planId] = {
+            profit: profit,
+            startTime: startTime,
+        };
+
+        // Salva os dados atualizados no arquivo data.json
+        fs.writeFile("./data.json", JSON.stringify(usersData, null, 2), (err) => {
+            if (err) {
+                console.error("Erro ao salvar os dados:", err);
+                return res.status(500).json({ message: "Erro ao salvar os dados." });
+            }
+            return res.json({ message: "Dados salvos com sucesso." });
+        });
+    });
 });
 
-// Rota para recuperar lucros
-app.get("/api/profit/:userId", (req, res) => {
-    const { userId } = req.params;
-    const data = loadData();
-
-    if (!data.users[userId]) {
-        return res.status(404).json({ message: "Usuário não encontrado." });
-    }
-
-    res.status(200).json(data.users[userId]);
-});
-
-// Inicia o servidor
-app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+// Inicializa o servidor
+app.listen(port, () => {
+    console.log(`Servidor rodando em http://localhost:${port}`);
 });
