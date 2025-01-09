@@ -27,32 +27,41 @@ function saveData(data) {
 
 // Rota para salvar ou atualizar lucros
 app.post("/api/profit", (req, res) => {
-    console.log("Dados recebidos:", req.body); // Verifique os dados recebidos no log do backend
     const { userId, planId, profit, startTime } = req.body;
 
-    // Verifique se todos os dados necessários foram fornecidos
     if (!userId || !planId || profit == null || !startTime) {
         return res.status(400).json({ message: "Dados incompletos." });
     }
 
     const data = loadData();
 
-    // Verifique se o usuário já existe e, se não, crie um novo usuário
+    // Atualiza os dados do usuário
     if (!data.users[userId]) {
-        console.log(`Usuário ${userId} não encontrado. Criando novo usuário.`);
-        data.users[userId] = {}; // Cria um novo usuário
+        data.users[userId] = {};
     }
-
-    // Atualiza os dados do plano do usuário
     data.users[userId][planId] = { profit, startTime };
 
-    // Salva os dados no arquivo
     saveData(data);
-
-    console.log(`Dados de lucro salvos para o usuário ${userId} no plano ${planId}`);
-
-    // Retorna uma resposta de sucesso
+    console.log(`Dados recebidos e salvos para o usuário ${userId}, plano ${planId}:`);
+    console.log({ profit, startTime });
+    
     res.status(200).json({ message: "Dados salvos com sucesso." });
+});
+
+// Rota para recuperar lucros
+app.get("/api/profit/:userId", (req, res) => {
+    const { userId } = req.params;
+    const data = loadData();
+
+    console.log("Tentando acessar o usuário com ID:", userId);
+
+    // Verifica se o usuário existe
+    if (!data.users[userId]) {
+        console.error("Usuário não encontrado:", userId);
+        return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
+    res.status(200).json(data.users[userId]);
 });
 
 // Inicia o servidor
