@@ -57,6 +57,11 @@ app.get("/api/profit/:userId", (req, res) => {
     res.status(200).json(data.users[userId]);
 });
 
+// Rota padrão para verificar o status da API
+app.get("/", (req, res) => {
+    res.send("API está funcionando corretamente!");
+});
+
 // Inicia o servidor
 app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
