@@ -1,52 +1,54 @@
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
 const app = express();
-const port = process.env.PORT || 3000;
 
-// Middleware para interpretar o corpo das requisições como JSON
 app.use(express.json());
 
-// Rota principal para verificar se o servidor está funcionando
-app.get("/", (req, res) => {
-    res.send("API está funcionando corretamente!");
-});
+// Caminho para o arquivo JSON onde os dados serão armazenados
+const dataFilePath = path.join(__dirname, "data.json");
 
-// Endpoint para salvar os ganhos do usuário
+// Função para ler os dados de data.json
+const readData = () => {
+    if (fs.existsSync(dataFilePath)) {
+        const data = fs.readFileSync(dataFilePath, "utf8");
+        return JSON.parse(data);
+    }
+    return { users: {} };
+};
+
+// Função para salvar os dados no arquivo data.json
+const saveData = (data) => {
+    fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2), "utf8");
+};
+
+// Endpoint para receber os dados do ganho
 app.post("/api/profit", (req, res) => {
     const { userId, planId, profit, startTime } = req.body;
 
-    // Lê os dados atuais do arquivo data.json
-    fs.readFile("./data.json", "utf8", (err, data) => {
-        if (err) {
-            console.error("Erro ao ler o arquivo:", err);
-            return res.status(500).json({ message: "Erro ao ler o arquivo." });
-        }
+    // Carregar os dados atuais
+    let data = readData();
 
-        let usersData = JSON.parse(data);
+    // Verificar se o usuário existe, caso contrário, criar o usuário
+    if (!data.users[userId]) {
+        data.users[userId] = {};
+    }
 
-        // Verifica se o usuário existe e cria o usuário caso não exista
-        if (!usersData.users[userId]) {
-            usersData.users[userId] = {};
-        }
+    // Adicionar ou atualizar os ganhos do plano
+    data.users[userId][planId] = {
+        profit: profit,
+        startTime: startTime
+    };
 
-        // Atualiza ou cria os dados de lucro do plano
-        usersData.users[userId][planId] = {
-            profit: profit,
-            startTime: startTime,
-        };
+    // Salvar os dados atualizados
+    saveData(data);
 
-        // Salva os dados atualizados no arquivo data.json
-        fs.writeFile("./data.json", JSON.stringify(usersData, null, 2), (err) => {
-            if (err) {
-                console.error("Erro ao salvar os dados:", err);
-                return res.status(500).json({ message: "Erro ao salvar os dados." });
-            }
-            return res.json({ message: "Dados salvos com sucesso." });
-        });
-    });
+    // Responder com os dados salvos
+    res.json({ message: "Dados salvos com sucesso!", data });
 });
 
-// Inicializa o servidor
+// Iniciar o servidor
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
-    console.log(`Servidor rodando em http://localhost:${port}`);
+    console.log(`Servidor rodando na porta ${port}`);
 });
